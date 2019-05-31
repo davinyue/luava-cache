@@ -15,7 +15,7 @@ import org.springframework.data.redis.connection.RedisStringCommands.SetOption;
 import org.springframework.data.redis.core.RedisCallback;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.types.Expiration;
-import org.springframework.data.redis.serializer.JdkSerializationRedisSerializer;
+import org.springframework.data.redis.serializer.RedisSerializer;
 
 public class RedisCache implements Cache {
 	public static final String RedisKeyCharset = "UTF-8";
@@ -27,7 +27,6 @@ public class RedisCache implements Cache {
 	}
 
 	public RedisCache(RedisTemplate<Serializable, Serializable> redisTemplate) {
-		redisTemplate.setKeySerializer(new JdkSerializationRedisSerializer());
 		this.redisTemplate = redisTemplate;
 	}
 
@@ -335,8 +334,7 @@ public class RedisCache implements Cache {
 		this.redisTemplate.execute(new RedisCallback<Void>() {
 			@Override
 			public Void doInRedis(RedisConnection connection) throws org.springframework.dao.DataAccessException {
-				JdkSerializationRedisSerializer serializer = (JdkSerializationRedisSerializer) redisTemplate
-						.getKeySerializer();
+				RedisSerializer<Object> serializer = (RedisSerializer<Object>) redisTemplate.getKeySerializer();
 				for (int i = 0; i < keys.length; i++) {
 					connection.del(serializer.serialize(keys[i]));
 				}
@@ -358,8 +356,8 @@ public class RedisCache implements Cache {
 		this.redisTemplate.execute(new RedisCallback<Void>() {
 			@Override
 			public Void doInRedis(RedisConnection connection) throws org.springframework.dao.DataAccessException {
-				JdkSerializationRedisSerializer serializer = (JdkSerializationRedisSerializer) redisTemplate
-						.getKeySerializer();
+				@SuppressWarnings("unchecked")
+				RedisSerializer<Object> serializer = (RedisSerializer<Object>) redisTemplate.getKeySerializer();
 				for (Serializable key : keys) {
 					connection.del(serializer.serialize(key));
 				}
