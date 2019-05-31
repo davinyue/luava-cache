@@ -11,10 +11,8 @@ import java.util.concurrent.TimeUnit;
 import org.linuxprobe.luava.cache.Cache;
 import org.springframework.dao.DataAccessException;
 import org.springframework.data.redis.connection.RedisConnection;
-import org.springframework.data.redis.connection.RedisStringCommands.SetOption;
 import org.springframework.data.redis.core.RedisCallback;
 import org.springframework.data.redis.core.RedisTemplate;
-import org.springframework.data.redis.core.types.Expiration;
 import org.springframework.data.redis.serializer.RedisSerializer;
 
 public class RedisCache implements Cache {
@@ -31,8 +29,9 @@ public class RedisCache implements Cache {
 	}
 
 	/**
-	 * @param key
-	 * @param entity
+	 * @param key     key
+	 * @param value   value
+	 * @param timeout timeout
 	 */
 	@Override
 	public <V extends Serializable, K extends Serializable> void set(K key, V value, long timeout) {
@@ -44,8 +43,8 @@ public class RedisCache implements Cache {
 	}
 
 	/**
-	 * @param key
-	 * @param entity
+	 * @param key   key
+	 * @param value value
 	 */
 	@Override
 	public <V extends Serializable, K extends Serializable> void set(K key, V value) {
@@ -77,25 +76,21 @@ public class RedisCache implements Cache {
 	}
 
 	/**
-	 * @param key
-	 * @return
-	 * @author lmdsoft
-	 * @Date 2016-5-7
+	 * 是否存在key
+	 * 
+	 * @param key key
 	 */
 	public boolean exists(final String key) {
 		return redisTemplate.hasKey(key);
 	}
 
 	public Boolean setNx(final String key, final String value) {
-
 		return redisTemplate.opsForValue().setIfAbsent(key, value);
 	}
 
 	/**
 	 * @param key
 	 * @return value
-	 * @author lmdsoft
-	 * @Date 2016-5-7
 	 */
 	public String getStringFromList(final String key) {
 		return (String) redisTemplate.execute(new RedisCallback<Object>() {
@@ -107,17 +102,11 @@ public class RedisCache implements Cache {
 		});
 	}
 
-	/**
-	 * @param keys
-	 * @return
-	 * @author lmdsoft
-	 * @Date 2016-5-7
-	 */
-	public long getListLength(final String keys) {
+	public long getListLength(final String key) {
 		return redisTemplate.execute(new RedisCallback<Long>() {
 			@Override
 			public Long doInRedis(RedisConnection connection) throws DataAccessException {
-				return connection.lLen(keys.getBytes());
+				return connection.lLen(key.getBytes());
 			}
 		});
 	}
@@ -127,9 +116,6 @@ public class RedisCache implements Cache {
 	 * 
 	 * @param key
 	 * @param elements byte[] 数组，可同时添加多个元素
-	 * @return
-	 * @author lmdsoft
-	 * @date 2016-5-7
 	 */
 	public Long addElementsToSet(final String key, final byte[]... elements) {
 		return redisTemplate.execute(new RedisCallback<Long>() {
@@ -149,9 +135,6 @@ public class RedisCache implements Cache {
 	 * 
 	 * @param key
 	 * @param elements byte[] 数组，可同时删除多个元素
-	 * @return
-	 * @author lmdsoft
-	 * @date 2016-5-7
 	 */
 	public Long remElementsFromSet(final String key, final byte[]... elements) {
 		return redisTemplate.execute(new RedisCallback<Long>() {
@@ -169,10 +152,7 @@ public class RedisCache implements Cache {
 	/**
 	 * 获取set中元素个数
 	 * 
-	 * @param key
-	 * @return
-	 * @author lmdsoft
-	 * @date 2016-5-7
+	 * @param key key
 	 */
 	public Long getSetSize(final String key) {
 		return redisTemplate.execute(new RedisCallback<Long>() {
@@ -190,10 +170,8 @@ public class RedisCache implements Cache {
 	/**
 	 * 从set中获取一个元素，并同时删除该元素
 	 * 
-	 * @param key
+	 * @param key key
 	 * @return byte数组，请根据上下文转换成相应的类型
-	 * @author lmdsoft
-	 * @date 2016-5-7
 	 */
 	public byte[] getAndRemoveElementFromSet(final String key) {
 		return redisTemplate.execute(new RedisCallback<byte[]>() {
@@ -211,10 +189,8 @@ public class RedisCache implements Cache {
 	/**
 	 * 获取到一个set中所有元素
 	 * 
-	 * @param key
+	 * @param key key
 	 * @return 该set中所有元素的byte[]，请根据上下文转换成相应的类型
-	 * @author lmdsoft
-	 * @date 2016-5-7
 	 */
 	public Set<byte[]> getElementsFromSet(final String key) {
 		return redisTemplate.execute(new RedisCallback<Set<byte[]>>() {
@@ -235,8 +211,6 @@ public class RedisCache implements Cache {
 	 * @param key
 	 * @param date 到期时间
 	 * @return 设置成功，返回true
-	 * @author lmdsoft
-	 * @date 2016-5-7
 	 */
 	public Boolean setExpireAt(final String key, final Date date) {
 		return redisTemplate.expireAt(key, date);
@@ -263,9 +237,6 @@ public class RedisCache implements Cache {
 		redisTemplate.convertAndSend(channel, message);
 	}
 
-	/**
-	 * @return
-	 */
 	@Override
 	public void flushDB() {
 		redisTemplate.execute(new RedisCallback<Void>() {
@@ -277,9 +248,6 @@ public class RedisCache implements Cache {
 		});
 	}
 
-	/**
-	 * @return
-	 */
 	@Override
 	public long dbSize() {
 		return redisTemplate.execute(new RedisCallback<Long>() {
@@ -290,9 +258,6 @@ public class RedisCache implements Cache {
 		});
 	}
 
-	/**
-	 * @return
-	 */
 	public String ping() {
 		return redisTemplate.execute(new RedisCallback<String>() {
 			@Override
@@ -303,27 +268,9 @@ public class RedisCache implements Cache {
 	}
 
 	/**
-	 * set
-	 * 
-	 * @param key
-	 * @param value
-	 * @param expire
-	 * @return
-	 */
-	public void set(final byte[] key, final byte[] value, final int expire) {
-		redisTemplate.execute(new RedisCallback<Void>() {
-			@Override
-			public Void doInRedis(final RedisConnection connection) throws DataAccessException {
-				connection.set(key, value, Expiration.seconds(expire), SetOption.UPSERT);
-				return null;
-			}
-		});
-	}
-
-	/**
 	 * delete
 	 * 
-	 * @param keys
+	 * @param keys keys
 	 */
 	@SuppressWarnings("unchecked")
 	@Override
@@ -346,7 +293,7 @@ public class RedisCache implements Cache {
 	/**
 	 * delete
 	 * 
-	 * @param key
+	 * @param keys keys
 	 */
 	@Override
 	public <T extends Serializable> void delete(final Collection<T> keys) {

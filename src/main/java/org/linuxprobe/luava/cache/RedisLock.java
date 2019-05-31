@@ -19,9 +19,9 @@ public class RedisLock {
 	/**
 	 * 获取锁，该方法是线程安全的
 	 * 
-	 * @param redisTemplate redisTemplate
-	 * @param lockKey       锁标记
-	 * @param expires       锁过有效期,单位秒,防止服务挂掉后锁不能释放产生死锁
+	 * @param redisCache redisCache
+	 * @param lockKey    锁标记
+	 * @param expires    锁过有效期,单位秒,防止服务挂掉后锁不能释放产生死锁
 	 * @return 获取锁成功返回true，失败返回false
 	 */
 	public static boolean lock(RedisCache redisCache, String lockKey, long expires) {
