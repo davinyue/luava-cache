@@ -11,8 +11,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 
 public class DefaultCache implements Cache {
-    private Map<Serializable, Serializable> keyMapValue = new ConcurrentHashMap<>();
-    private Map<Serializable, Long> keyMapTimeout = new ConcurrentHashMap<>();
+    private final Map<Serializable, Serializable> keyMapValue = new ConcurrentHashMap<>();
+    private final Map<Serializable, Long> keyMapTimeout = new ConcurrentHashMap<>();
 
     /**
      * 判断key是否有效
@@ -69,11 +69,12 @@ public class DefaultCache implements Cache {
 
     @Override
     public <V extends Serializable, K extends Serializable> void set(K key, V value) {
-        this.set(key, value);
+        this.set(key, value, 0, TimeUnit.SECONDS);
     }
 
+    @SafeVarargs
     @Override
-    public <T extends Serializable> void delete(@SuppressWarnings("unchecked") T... keys) {
+    public final <T extends Serializable> void delete(T... keys) {
         if (keys != null) {
             for (Serializable key : keys) {
                 this.keyMapValue.remove(key);
@@ -108,11 +109,9 @@ public class DefaultCache implements Cache {
     public <T extends Serializable> Set<T> keys(String pattern) {
         Set<Serializable> existKeys = this.keyMapValue.keySet();
         Set<T> result = new HashSet<T>();
-        if (existKeys != null) {
-            for (Serializable existKey : existKeys) {
-                if (this.isEffective(existKey) && existKey.toString().matches(pattern)) {
-                    result.add((T) existKey);
-                }
+        for (Serializable existKey : existKeys) {
+            if (this.isEffective(existKey) && existKey.toString().matches(pattern)) {
+                result.add((T) existKey);
             }
         }
         return result;
@@ -144,11 +143,9 @@ public class DefaultCache implements Cache {
     public long dbSize() {
         long result = 0;
         Set<Serializable> existKeys = this.keyMapValue.keySet();
-        if (existKeys != null) {
-            for (Serializable existKey : existKeys) {
-                if (this.isEffective(existKey)) {
-                    result++;
-                }
+        for (Serializable existKey : existKeys) {
+            if (this.isEffective(existKey)) {
+                result++;
             }
         }
         return result;

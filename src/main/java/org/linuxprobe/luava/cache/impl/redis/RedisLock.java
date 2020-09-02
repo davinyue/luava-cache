@@ -13,7 +13,7 @@ import java.util.Random;
  */
 public class RedisLock {
     private static final Logger logger = LoggerFactory.getLogger(RedisLock.class);
-    private static ThreadLocal<String> threadLocalValue = new ThreadLocal<>();
+    private static final ThreadLocal<String> threadLocalValue = new ThreadLocal<>();
 
     /**
      * 获取锁，该方法是线程安全的
@@ -27,14 +27,14 @@ public class RedisLock {
         String value = String.valueOf(((new Date().getTime()) / 1000) + expires);
         boolean setSuccess = redisCache.setNX(lockKey, value);
         boolean result = false;
-        /** 如果不成功 */
+        // 如果不成功
         if (!setSuccess) {
             String currentValue = redisCache.get(lockKey);
-            /** 如果取出的到期时间戳已经小于当前时间戳，则说明加锁的系统挂掉了 */
+            // 如果取出的到期时间戳已经小于当前时间戳，则说明加锁的系统挂掉了
             if (currentValue != null && Long.parseLong(currentValue) < (new Date().getTime() / 1000)) {
                 String newValue = String.valueOf(((new Date().getTime()) / 1000) + expires);
                 String oldValue = (String) redisCache.getAndSet(lockKey, newValue);
-                /** 如果设置成功后返回的值等于设置前获取的值，说明还未被其它线程或服务抢占，可以获得锁 */
+                // 如果设置成功后返回的值等于设置前获取的值，说明还未被其它线程或服务抢占，可以获得锁
                 if (oldValue != null && oldValue.equals(currentValue)) {
                     result = true;
                     RedisLock.threadLocalValue.set(newValue);
@@ -72,7 +72,7 @@ public class RedisLock {
         try {
             Thread.sleep(random.nextInt(100));
         } catch (InterruptedException e) {
-            new RuntimeException(e);
+            throw new RuntimeException(e);
         }
     }
 }

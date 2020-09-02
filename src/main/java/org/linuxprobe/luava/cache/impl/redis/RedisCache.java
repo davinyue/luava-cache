@@ -1,8 +1,9 @@
 package org.linuxprobe.luava.cache.impl.redis;
 
 import org.linuxprobe.luava.cache.Cache;
-import org.springframework.dao.DataAccessException;
 import org.springframework.data.redis.connection.RedisConnection;
+import org.springframework.data.redis.connection.RedisConnectionCommands;
+import org.springframework.data.redis.connection.RedisServerCommands;
 import org.springframework.data.redis.core.Cursor;
 import org.springframework.data.redis.core.RedisCallback;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -10,7 +11,6 @@ import org.springframework.data.redis.core.ScanOptions;
 import org.springframework.data.redis.serializer.RedisSerializer;
 
 import java.io.Serializable;
-import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.Collection;
 import java.util.Date;
@@ -22,7 +22,7 @@ import java.util.function.Consumer;
 public class RedisCache implements Cache {
     public static final String RedisKeyCharset = "UTF-8";
 
-    private RedisTemplate<Serializable, Serializable> redisTemplate;
+    private final RedisTemplate<Serializable, Serializable> redisTemplate;
 
     public RedisTemplate<Serializable, Serializable> getRedisTemplate() {
         return this.redisTemplate;
@@ -65,7 +65,7 @@ public class RedisCache implements Cache {
     }
 
     /**
-     * @param key
+     * @param key 键
      */
     @Override
     @SuppressWarnings("unchecked")
@@ -76,7 +76,7 @@ public class RedisCache implements Cache {
     /**
      * 获取后设置到期时间
      *
-     * @param key
+     * @param key     键
      * @param timeout 有效期,单位秒
      */
     @SuppressWarnings("unchecked")
@@ -91,10 +91,11 @@ public class RedisCache implements Cache {
     /**
      * 是否存在key
      *
-     * @param key key
+     * @param key 键
      */
     public boolean exists(final String key) {
-        return this.redisTemplate.hasKey(key);
+        Boolean result = this.redisTemplate.hasKey(key);
+        return result == null ? false : result;
     }
 
     public Boolean setNx(final String key, final String value) {
@@ -102,126 +103,9 @@ public class RedisCache implements Cache {
     }
 
     /**
-     * @param key
-     * @return value
-     */
-    public String getStringFromList(final String key) {
-        return (String) this.redisTemplate.execute(new RedisCallback<Object>() {
-            @Override
-            public String doInRedis(final RedisConnection connection) throws DataAccessException {
-                return new String(connection.rPop(key.getBytes(Charset.forName(RedisCache.RedisKeyCharset))),
-                        Charset.forName(RedisCache.RedisKeyCharset));
-            }
-        });
-    }
-
-    public long getListLength(final String key) {
-        return this.redisTemplate.execute(new RedisCallback<Long>() {
-            @Override
-            public Long doInRedis(RedisConnection connection) throws DataAccessException {
-                return connection.lLen(key.getBytes());
-            }
-        });
-    }
-
-    /**
-     * 向set中存入一个或多个元素
-     *
-     * @param key
-     * @param elements byte[] 数组，可同时添加多个元素
-     */
-    public Long addElementsToSet(final String key, final byte[]... elements) {
-        return this.redisTemplate.execute(new RedisCallback<Long>() {
-            @Override
-            public Long doInRedis(RedisConnection connection) throws DataAccessException {
-                if (connection.isClosed()) {
-                    connection = RedisCache.this.redisTemplate.getConnectionFactory().getConnection();
-                }
-                Long effectLen = connection.sAdd(key.getBytes(), elements);
-                return effectLen;
-            }
-        });
-    }
-
-    /**
-     * 从set中删除元素
-     *
-     * @param key
-     * @param elements byte[] 数组，可同时删除多个元素
-     */
-    public Long remElementsFromSet(final String key, final byte[]... elements) {
-        return this.redisTemplate.execute(new RedisCallback<Long>() {
-            @Override
-            public Long doInRedis(RedisConnection connection) throws DataAccessException {
-                if (connection.isClosed()) {
-                    connection = RedisCache.this.redisTemplate.getConnectionFactory().getConnection();
-                }
-                Long effectLen = connection.sRem(key.getBytes(Charset.forName(RedisCache.RedisKeyCharset)), elements);
-                return effectLen;
-            }
-        });
-    }
-
-    /**
-     * 获取set中元素个数
-     *
-     * @param key key
-     */
-    public Long getSetSize(final String key) {
-        return this.redisTemplate.execute(new RedisCallback<Long>() {
-            @Override
-            public Long doInRedis(RedisConnection connection) throws DataAccessException {
-                if (connection.isClosed()) {
-                    connection = RedisCache.this.redisTemplate.getConnectionFactory().getConnection();
-                }
-                Long effectLen = connection.sCard(key.getBytes(Charset.forName(RedisCache.RedisKeyCharset)));
-                return effectLen;
-            }
-        });
-    }
-
-    /**
-     * 从set中获取一个元素，并同时删除该元素
-     *
-     * @param key key
-     * @return byte数组，请根据上下文转换成相应的类型
-     */
-    public byte[] getAndRemoveElementFromSet(final String key) {
-        return this.redisTemplate.execute(new RedisCallback<byte[]>() {
-            @Override
-            public byte[] doInRedis(RedisConnection connection) throws DataAccessException {
-                if (connection.isClosed()) {
-                    connection = RedisCache.this.redisTemplate.getConnectionFactory().getConnection();
-                }
-                byte[] element = connection.sPop(key.getBytes(Charset.forName(RedisCache.RedisKeyCharset)));
-                return element;
-            }
-        });
-    }
-
-    /**
-     * 获取到一个set中所有元素
-     *
-     * @param key key
-     * @return 该set中所有元素的byte[]，请根据上下文转换成相应的类型
-     */
-    public Set<byte[]> getElementsFromSet(final String key) {
-        return this.redisTemplate.execute(new RedisCallback<Set<byte[]>>() {
-            @Override
-            public Set<byte[]> doInRedis(RedisConnection connection) throws DataAccessException {
-                if (connection.isClosed()) {
-                    connection = RedisCache.this.redisTemplate.getConnectionFactory().getConnection();
-                }
-                Set<byte[]> elements = connection.sMembers(key.getBytes(Charset.forName(RedisCache.RedisKeyCharset)));
-                return elements;
-            }
-        });
-    }
-
-    /**
      * 设置key的到期时间
      *
-     * @param key
+     * @param key  键
      * @param date 到期时间
      * @return 设置成功，返回true
      */
@@ -240,44 +124,22 @@ public class RedisCache implements Cache {
         this.redisTemplate.expire(key, timeout, TimeUnit.SECONDS);
     }
 
-    /**
-     * 发布消息到一个指定频道
-     *
-     * @param channel 频道
-     * @param message 消息体
-     */
-    public void publish(final String channel, final Object message) {
-        this.redisTemplate.convertAndSend(channel, message);
-    }
-
     @Override
     public void flushDB() {
-        this.redisTemplate.execute(new RedisCallback<Void>() {
-            @Override
-            public Void doInRedis(RedisConnection connection) throws DataAccessException {
-                connection.flushDb();
-                return null;
-            }
+        this.redisTemplate.execute((RedisCallback<Void>) connection -> {
+            connection.flushDb();
+            return null;
         });
     }
 
     @Override
     public long dbSize() {
-        return this.redisTemplate.execute(new RedisCallback<Long>() {
-            @Override
-            public Long doInRedis(RedisConnection connection) throws DataAccessException {
-                return connection.dbSize();
-            }
-        });
+        Long result = this.redisTemplate.execute(RedisServerCommands::dbSize);
+        return result == null ? 0 : result;
     }
 
     public String ping() {
-        return this.redisTemplate.execute(new RedisCallback<String>() {
-            @Override
-            public String doInRedis(RedisConnection connection) throws DataAccessException {
-                return connection.ping();
-            }
-        });
+        return this.redisTemplate.execute(RedisConnectionCommands::ping);
     }
 
     /**
@@ -291,15 +153,13 @@ public class RedisCache implements Cache {
         if (keys == null || keys.length == 0) {
             return;
         }
-        this.redisTemplate.execute(new RedisCallback<Void>() {
-            @Override
-            public Void doInRedis(RedisConnection connection) throws org.springframework.dao.DataAccessException {
-                RedisSerializer<Object> serializer = (RedisSerializer<Object>) RedisCache.this.redisTemplate.getKeySerializer();
-                for (int i = 0; i < keys.length; i++) {
-                    connection.del(serializer.serialize(keys[i]));
-                }
-                return null;
+        this.redisTemplate.execute((RedisCallback<Void>) connection -> {
+            RedisSerializer<Object> serializer = (RedisSerializer<Object>) RedisCache.this.redisTemplate
+                    .getKeySerializer();
+            for (T key : keys) {
+                connection.del(serializer.serialize(key));
             }
+            return null;
         });
     }
 
@@ -313,16 +173,14 @@ public class RedisCache implements Cache {
         if (keys == null || keys.size() == 0) {
             return;
         }
-        this.redisTemplate.execute(new RedisCallback<Void>() {
-            @Override
-            public Void doInRedis(RedisConnection connection) throws org.springframework.dao.DataAccessException {
-                @SuppressWarnings("unchecked")
-                RedisSerializer<Object> serializer = (RedisSerializer<Object>) RedisCache.this.redisTemplate.getKeySerializer();
-                for (Serializable key : keys) {
-                    connection.del(serializer.serialize(key));
-                }
-                return null;
+        this.redisTemplate.execute((RedisCallback<Void>) connection -> {
+            @SuppressWarnings("unchecked")
+            RedisSerializer<Object> serializer = (RedisSerializer<Object>) RedisCache.this.redisTemplate
+                    .getKeySerializer();
+            for (Serializable key : keys) {
+                connection.del(serializer.serialize(key));
             }
+            return null;
         });
     }
 
@@ -330,14 +188,18 @@ public class RedisCache implements Cache {
      * @param pattern 正则表达式
      */
     @Override
-    public Set<Serializable> keys(final String pattern) {
-        Set<Serializable> result = new HashSet<>(this.redisTemplate.keys(pattern));
-        return result;
+    @SuppressWarnings("unchecked")
+    public <V extends Serializable> Set<V> keys(final String pattern) {
+        return (Set<V>) this.redisTemplate.keys(pattern);
     }
 
     @Override
     public <V extends Serializable, K extends Serializable> boolean setNX(K key, V value) {
-        return this.redisTemplate.opsForValue().setIfAbsent(key, value);
+        Boolean result = this.redisTemplate.opsForValue().setIfAbsent(key, value);
+        if (result == null) {
+            result = false;
+        }
+        return result;
     }
 
     @Override
@@ -366,7 +228,8 @@ public class RedisCache implements Cache {
      */
     public void scan(String pattern, Consumer<byte[]> consumer) {
         this.redisTemplate.execute((RedisConnection connection) -> {
-            Cursor<byte[]> cursor = connection.scan(ScanOptions.scanOptions().count(Long.MAX_VALUE).match(pattern).build());
+            Cursor<byte[]> cursor = connection.scan(ScanOptions.scanOptions().count(Long.MAX_VALUE).match(pattern)
+                    .build());
             cursor.forEachRemaining(consumer);
             return null;
         });
